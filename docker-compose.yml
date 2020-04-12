@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  parser:
+    build: .
+    environment:
+      DB_URI: |
+        host=postgres
+        port=5432
+        user=${POSTGRES_USER:-velobike}
+        password=${POSTGRES_PASSWORD:-velobike}
+        dbname=${POSTGRES_DB:-velobike}
+        sslmode=disable
+    depends_on:
+      - "postgres"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-velobike}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-velobike}
+      POSTGRES_DB: ${POSTGRES_DB:-velobike}
+      PGDATA: /data/postgres
+    volumes:
+      - postgres:/data/postgres
+    ports:
+      - "54321:5432"
+    restart: unless-stopped
+
+volumes:
+  postgres:
