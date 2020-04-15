@@ -19,9 +19,24 @@ func initDB() *gorm.DB {
 	return db
 }
 
-func init() {
-	os.Setenv("TZ", "Europe/Moscow")
+func processResponse(response *parkings.VelobikeResponse) {
+	db := initDB()
+	defer db.Close()
 
+	stateRepository := parkings.ProvideStateRepository(db)
+	lastState := stateRepository.GetLast()
+
+	alreadyParsed := lastState.Time.Equal(
+		helpers.GetCurrentTime(),
+	)
+
+	if !alreadyParsed {
+		states := parkings.ToStates(*response)
+		stateRepository.SaveAll(states)
+	}
+}
+
+func init() {
 	db := initDB()
 	defer db.Close()
 
@@ -40,22 +55,5 @@ func main() {
 
 			helpers.SleepUntilNextMinute()
 		}
-	}
-}
-
-func processResponse(response *parkings.VelobikeResponse) {
-	db := initDB()
-	defer db.Close()
-
-	stateRepository := parkings.ProvideStateRepository(db)
-	lastState := stateRepository.GetLast()
-
-	alreadyParsed := lastState.Time.Equal(
-		helpers.GetCurrentTime(),
-	)
-
-	if !alreadyParsed {
-		states := parkings.ToStates(*response)
-		stateRepository.SaveAll(states)
 	}
 }

@@ -11,6 +11,7 @@ services:
         password=${POSTGRES_PASSWORD:-velobike}
         dbname=${POSTGRES_DB:-velobike}
         sslmode=disable
+      TZ: 'Europe/Moscow'
     depends_on:
       - "postgres"
     command: wait-for-it postgres:5432 -- ./main
@@ -23,6 +24,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-velobike}
       POSTGRES_DB: ${POSTGRES_DB:-velobike}
       PGDATA: /data/postgres
+      TZ: 'Europe/Moscow'
+      PGTZ: 'Europe/Moscow'
     volumes:
       - postgres:/data/postgres
     ports:
