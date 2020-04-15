@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/win0err/velobike-parser/helpers"
 )
 
 // VelobikeResponse structure is properly parsed JSON with request time added.
@@ -51,7 +53,7 @@ func Get() (*VelobikeResponse, error) {
 	responseData := &VelobikeResponse{}
 	json.Unmarshal(body, &responseData)
 
-	responseData.Time = time.Now()
+	responseData.Time = helpers.GetCurrentTime()
 
 	return responseData, nil
 }

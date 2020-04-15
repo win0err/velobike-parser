@@ -6,8 +6,15 @@ type StateRepository struct {
 	DB *gorm.DB
 }
 
-func ProvideStateRepostiory(DB *gorm.DB) StateRepository {
+func ProvideStateRepository(DB *gorm.DB) StateRepository {
 	return StateRepository{DB: DB}
+}
+
+func (sr *StateRepository) GetLast() State {
+	var state State
+	sr.DB.Last(&state)
+
+	return state
 }
 
 func (sr *StateRepository) Save(state State) State {
