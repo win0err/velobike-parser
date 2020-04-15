@@ -4,6 +4,7 @@ services:
   parser:
     build: .
     environment:
+      DB_DIALECT: "postgres"
       DB_URI: |
         host=postgres
         port=5432
@@ -11,9 +12,12 @@ services:
         password=${POSTGRES_PASSWORD:-velobike}
         dbname=${POSTGRES_DB:-velobike}
         sslmode=disable
-      TZ: 'Europe/Moscow'
+      TZ: "Europe/Moscow"
+      BACKUP_DIR: "/data"
     depends_on:
       - "postgres"
+    volumes:
+      - ./data:/data
     command: wait-for-it postgres:5432 -- ./main
     restart: unless-stopped
 
@@ -24,8 +28,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-velobike}
       POSTGRES_DB: ${POSTGRES_DB:-velobike}
       PGDATA: /data/postgres
-      TZ: 'Europe/Moscow'
-      PGTZ: 'Europe/Moscow'
+      TZ: "Europe/Moscow"
+      PGTZ: "Europe/Moscow"
     volumes:
       - postgres:/data/postgres
     ports:
