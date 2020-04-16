@@ -12,7 +12,7 @@ COPY . .
 COPY --from=wait-for-it /usr/bin/wait-for-it /usr/bin/wait-for-it
 
 ENV DB_DIALECT sqlite3
-ENV DB_URI ":memory:"
+ENV DB_URI "/data/velobike.db"
 ENV BACKUP_DIR "/data"
 
 RUN go build -o main .

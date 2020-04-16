@@ -23,6 +23,10 @@ func init() {
 	}
 	defer db.Close()
 
+	db.DB().SetMaxIdleConns(10)
+	db.DB().SetMaxOpenConns(100)
+	db.DB().SetConnMaxLifetime(time.Hour)
+
 	if err := database.AutoMigrate(db); err != nil {
 		log.Fatalln("[FATAL] Unable to migrate DB:", err)
 	}
