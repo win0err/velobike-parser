@@ -17,7 +17,7 @@ func processResponse(response *parkings.VelobikeResponse) {
 	} else {
 		log.Println("[WARN] Unable to save to database:", err)
 		if err := savers.ToJson(states, currentTime); err == nil {
-			log.Printf("[INFO] Data backuped for %s to %s\n", currentTime, savers.BackupDir)
+			log.Printf("[INFO] Data backuped for %s\n", currentTime)
 		} else {
 			log.Println("[ERROR] Error while saving to DB:", err)
 		}
