@@ -22,4 +22,6 @@ func processResponse(response *parkings.VelobikeResponse) {
 			log.Println("[ERROR] Error while saving to DB:", err)
 		}
 	}
+
+	wg.Done()
 }
