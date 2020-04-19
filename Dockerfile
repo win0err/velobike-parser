@@ -15,6 +15,6 @@ ENV DB_DIALECT sqlite3
 ENV DB_URI "/data/velobike.db"
 ENV BACKUP_DIR "/data"
 
-RUN go build -o main .
+RUN go build -o velobike-parser .
 
-CMD ["./main"]
+CMD ["./velobike-parser"]

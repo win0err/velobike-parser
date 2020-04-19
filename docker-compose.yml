@@ -18,7 +18,7 @@ services:
       - "postgres"
     volumes:
       - ./data:/data
-    command: wait-for-it postgres:5432 -- ./main
+    command: wait-for-it postgres:5432 -- ./velobike-parser
     restart: unless-stopped
 
   postgres:
