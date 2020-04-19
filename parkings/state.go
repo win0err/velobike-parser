@@ -4,7 +4,7 @@ import "time"
 
 // State contains information about the station at a specific point in time
 type State struct {
-	ID                  uint64    `gorm:"primary_key;auto_increment"`
+	ID                  uint64    `gorm:"primary_key;auto_increment" json:"-"`
 	Time                time.Time `gorm:"index:time_idx"`
 	IsLocked            bool
 	IsFavourite         bool

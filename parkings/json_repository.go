@@ -31,5 +31,5 @@ func (sr *JsonStateRepository) SaveAll(states []State, currentTime time.Time) er
 }
 
 func (sr *JsonStateRepository) getFileName(currentTime time.Time) string {
-	return sr.directory + "/" + currentTime.Format("2006-01-02/15-04") + ".json"
+	return sr.directory + "/json/" + currentTime.Format("2006-01-02/15-04") + ".json"
 }

@@ -2,6 +2,7 @@ package parkings
 
 import (
 	"github.com/jinzhu/gorm"
+	"time"
 )
 
 type DbStateRepository struct {
@@ -35,4 +36,28 @@ func (sr *DbStateRepository) SaveAll(states []State) error {
 
 		return nil
 	})
+}
+
+func (sr *DbStateRepository) FindByTimeRange(from, to time.Time) ([]State, error) {
+	var states []State
+	if err := sr.DB.
+		Set("gorm:auto_preload", true).
+		Find(&states, "time >= ? AND time <= ?", from, to).Error;
+		err != nil {
+		return states, err
+	}
+
+	return states, nil
+}
+
+func (sr *DbStateRepository) FindAll() ([]State, error) {
+	var states []State
+	if err := sr.DB.
+		Set("gorm:auto_preload", true).
+		Find(&states).Error;
+		err != nil {
+		return states, err
+	}
+
+	return states, nil
 }
