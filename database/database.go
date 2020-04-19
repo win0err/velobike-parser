@@ -28,6 +28,9 @@ func AutoMigrate(db *gorm.DB) error {
 			return err
 		}
 
+		db.Model(&parkings.State{}).
+			AddUniqueIndex("idx_station_id_time", "station_id", "time")
+
 		if DbDialect != "sqlite3" {
 			return db.Model(&parkings.State{}).
 				AddForeignKey(
