@@ -47,6 +47,12 @@ Credentials:
 - **Password:** velobike
 - **Database:** velobike
 
+By default, docker-compose creates a volume `postgres` for PostgreSQL data.
+You can also explicitly set the volume or directory, e.g.: 
+```bash
+$ POSTGRES_VOLUME="./data/postgres" docker-compose up
+```
+
 See `docker-compose.yml` for extra environment variables. 
 
 ## Notes

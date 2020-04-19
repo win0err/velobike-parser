@@ -31,7 +31,7 @@ services:
       TZ: "Europe/Moscow"
       PGTZ: "Europe/Moscow"
     volumes:
-      - postgres:/data/postgres
+      - ${POSTGRES_VOLUME:-postgres}:/data/postgres
     ports:
       - "54321:5432"
     restart: unless-stopped
