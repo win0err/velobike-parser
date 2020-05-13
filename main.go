@@ -86,20 +86,31 @@ func main() {
 		}
 
 	default:
+		errorHandler := func(err error) {
+			log.Println("[ERROR] Unable to get parkings data:", err)
+
+			log.Println("[INFO] Retry in 5 seconds...")
+			time.Sleep(5 * time.Second)
+		}
+
 		for !isInterrupted {
 			wg.Add(1)
+
 			response, err := parkings.Get()
 			if err != nil {
-				log.Println("[ERROR] Unable to get parkings data:", err)
-
-				log.Println("[INFO] Retry in 5 seconds...")
-				time.Sleep(5 * time.Second)
-
+				errorHandler(err)
 				wg.Done()
 				continue
 			}
 
-			go processResponse(response)
+			states := parkings.ToStates(*response)
+			if len(states) == 0 {
+				errorHandler(err)
+				wg.Done()
+				continue
+			}
+
+			go processResponse(states)
 			helpers.SleepUntilNextMinute()
 		}
 	}

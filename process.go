@@ -14,8 +14,7 @@ import (
 	"github.com/win0err/velobike-parser/savers"
 )
 
-func processResponse(response *parkings.VelobikeResponse) {
-	states := parkings.ToStates(*response)
+func processResponse(states []parkings.State) {
 	currentTime := helpers.GetCurrentTime()
 
 	if err := savers.ToDb(states, currentTime); err == nil {
