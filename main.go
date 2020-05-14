@@ -89,8 +89,9 @@ func main() {
 		for !isInterrupted {
 			wg.Add(1)
 
-			response, err := parkings.Get()
-			if err != nil {
+			req := parkings.NewRequest()
+
+			if err := req.Get(); err != nil {
 				log.Println("[ERROR] Unable to get parkings data:", err)
 
 				log.Println("[INFO] Retry in 5 seconds...")
@@ -100,16 +101,17 @@ func main() {
 				continue
 			}
 
-			states := parkings.ToStates(*response)
-			if len(states) == 0 {
-				log.Printf("[WARN] Parkings data is empty: %+v \n", *response)
+			if err := req.Parse(); err != nil {
+				log.Println("[ERROR] Unable to parse parkings data:", err)
 
-				log.Println("[INFO] Retry in 15 seconds...")
-				time.Sleep(15 * time.Second)
+				log.Println("[INFO] Retry in 10 seconds...")
+				time.Sleep(10 * time.Second)
 
 				wg.Done()
 				continue
 			}
+
+			states := parkings.ToStates(*req.ParsedResponse)
 
 			go processResponse(states)
 			helpers.SleepUntilNextMinute()

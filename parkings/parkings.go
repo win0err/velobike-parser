@@ -2,6 +2,7 @@ package parkings
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -38,22 +39,40 @@ type VelobikeResponseItem struct {
 
 const VelobikeAPIEndpointURI = "https://velobike.ru/ajax/parkings/"
 
-// Get information about parkings from Velobike's API and parse response.
-func Get() (*VelobikeResponse, error) {
+type Request struct {
+	RawResponse []byte
+	ParsedResponse *VelobikeResponse
+}
+
+func NewRequest() Request {
+	return Request{
+		ParsedResponse: &VelobikeResponse{},
+	}
+}
+
+func (r *Request) Get() error {
 	res, err := http.Get(VelobikeAPIEndpointURI)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	r.RawResponse, err = ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	responseData := &VelobikeResponse{}
-	json.Unmarshal(body, &responseData)
+	return nil
+}
 
-	responseData.Time = helpers.GetCurrentTime()
+func (r *Request) Parse() error {
+	if err := json.Unmarshal(r.RawResponse, r.ParsedResponse); err != nil {
+		return err
+	}
 
-	return responseData, nil
+	if len(r.ParsedResponse.Items) == 0 {
+		return fmt.Errorf("parkings data is empty: %+v", string(r.RawResponse))
+	}
+
+	r.ParsedResponse.Time = helpers.GetCurrentTime()
+	return nil
 }
