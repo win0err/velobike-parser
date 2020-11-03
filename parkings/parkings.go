@@ -1,6 +1,7 @@
 package parkings
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -51,7 +52,11 @@ func NewRequest() Request {
 }
 
 func (r *Request) Get() error {
-	res, err := http.Get(VelobikeAPIEndpointURI)
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	res, err := client.Get(VelobikeAPIEndpointURI)
 	if err != nil {
 		return err
 	}
