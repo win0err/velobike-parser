@@ -1,141 +1,129 @@
 package main
 
 import (
-	"bufio"
 	"flag"
-	"fmt"
-	"io"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/avast/retry-go"
+	"github.com/robfig/cron/v3"
+
 	"github.com/win0err/velobike-parser/database"
 	"github.com/win0err/velobike-parser/helpers"
 	"github.com/win0err/velobike-parser/parkings"
+	"github.com/win0err/velobike-parser/savers"
 )
 
+var c = cron.New(cron.WithSeconds())
 var wg = &sync.WaitGroup{}
-var isInterrupted = false
+var noMigrate = flag.Bool("no-migrate", false, "disable automigration of database schema on start")
 
 func init() {
-	db, err := database.GetConnection()
-	if err != nil {
-		log.Fatalln("[FATAL] Unable get initial DB connection:", err)
-	}
-	defer db.Close()
-
-	db.DB().SetMaxIdleConns(10)
-	db.DB().SetMaxOpenConns(100)
-	db.DB().SetConnMaxLifetime(time.Hour)
-
-	if err := database.AutoMigrate(db); err != nil {
-		log.Fatalln("[FATAL] Unable to migrate DB:", err)
-	}
+	flag.Parse()
 }
 
 func main() {
-	go interruptHandler()
+	if !*noMigrate {
+		if err := database.AutoMigrate(); err != nil {
+			helpers.Log.Fatal("automigration failed:", err)
+		}
 
-	mode := ""
-	if len(os.Args) > 1 {
-		mode = os.Args[1]
+		helpers.Log.Info("automigration successfully completed")
 	}
 
-	switch mode {
-	case "import":
-		fromFile := len(os.Args) > 2
+	schedule, err := cron.ParseStandard(helpers.Config.ParseInterval)
+	if err != nil {
+		helpers.Log.Fatal("wrong parse interval:", err)
+	}
 
-		var reader io.Reader
-		if fromFile {
-			file, _ := os.Open(os.Args[2])
-			reader = bufio.NewReader(file)
-		} else {
-			reader = os.Stdin
-		}
+	nextRun := schedule.Next(time.Now())
+	retryDuration := schedule.Next(nextRun).Sub(nextRun) / 4
 
-		if err := importData(reader); err != nil {
-			panic(err)
-		}
+	// todo: sleep until run. e.g.
+	// if we want to parse every 15 minutes,
+	// we need to invoke the function in 00, 15, 30, 45 minutes (not 05, 20, 35, 50)
+	helpers.Log.Info("starting in", nextRun.Sub(time.Now()))
 
-	case "export":
-		if len(os.Args) < 3 {
-			fmt.Printf(
-				"Usage: \n"+
-					"%s export -from=\"2006-01-02 15:04 MST\" -to=\"2006-01-02 15:04 MST\"\n"+
-					"%s export -all\n",
-				os.Args[0],
-				os.Args[0],
-			)
-			os.Exit(1)
-		}
-		exportCmd := flag.NewFlagSet("export", flag.ExitOnError)
-		all := exportCmd.Bool("all", false, "all")
-		from := exportCmd.String("from", "", "from")
-		to := exportCmd.String("to", "", "to")
+	job := func() {
+		wg.Add(1)
+		defer wg.Done()
 
-		exportCmd.Parse(os.Args[2:])
+		err := retry.Do(
+			parse,
+			retry.Attempts(3),
+			retry.OnRetry(func(n uint, err error) { helpers.Log.Infof("retrying (%d attempt)...\n", n + 1) }),
+			retry.Delay(retryDuration),
+		)
 
-		data, err := exportData(*all, *from, *to)
-		if err == nil {
-			os.Stdout.Write(data)
-		} else {
-			panic(err)
-		}
-
-	default:
-		for !isInterrupted {
-			wg.Add(1)
-
-			req := parkings.NewRequest()
-
-			if err := req.Get(); err != nil {
-				log.Println("[ERROR] Unable to get parkings data:", err)
-
-				log.Println("[INFO] Retry in 5 seconds...")
-				time.Sleep(5 * time.Second)
-
-				wg.Done()
-				continue
-			}
-
-			if err := req.Parse(); err != nil {
-				log.Println("[ERROR] Unable to parse parkings data:", err)
-
-				log.Println("[INFO] Retry in 10 seconds...")
-				time.Sleep(10 * time.Second)
-
-				wg.Done()
-				continue
-			}
-
-			states := parkings.ToStates(*req.ParsedResponse)
-
-			go processResponse(states)
-			helpers.SleepUntilNextMinute()
+		if err != nil {
+			helpers.Log.Critical("error while retrying:", err)
 		}
 	}
+
+	c.Schedule(schedule, cron.FuncJob(job))
+
+	go onInterrupt(func() { c.Stop() })
+
+	c.Run()
+	wg.Wait()
+
+	database.Connection.DB().Close()
+
+	helpers.Log.Info("shutting down...")
 }
 
-func interruptHandler() {
-	go func() {
-		chSignal := make(chan os.Signal, 1)
-		signal.Notify(chSignal, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
-		for {
-			select {
-			case sig := <-chSignal:
-				log.Println("[INFO] Received", sig)
-				isInterrupted = true
+func parse() error {
+	req := parkings.NewRequest()
 
-				log.Println("[INFO] Shutting down...")
-				wg.Wait()
+	if err := req.Get(); err != nil {
+		helpers.Log.Warning("unable to get parkings data:", err)
 
-				os.Exit(0)
-			default:
+		return err
+	}
+
+	if err := req.Parse(); err != nil {
+		helpers.Log.Warning("unable to parse parkings data:", err)
+
+		return err
+	}
+
+	states := parkings.ToStates(*req.ParsedResponse)
+
+	if len(states) > 0 {
+		currentTime := states[0].Time
+
+		if err := savers.ToDb(states); err == nil {
+			helpers.Log.Info("data successfully saved for", currentTime)
+		} else {
+			helpers.Log.Warning("unable to save to database:", err)
+
+			if err := savers.ToJson(states); err == nil {
+				helpers.Log.Infof("data backed up for %s\n", currentTime)
+			} else {
+				helpers.Log.Warning("error while saving to JSON:", err)
 			}
+
+			return err
 		}
-	}()
+	}
+
+	return nil
+}
+
+func onInterrupt(cmd func()) {
+	chSignal := make(chan os.Signal, 1)
+	signal.Notify(chSignal, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+
+	for {
+		select {
+		case sig := <-chSignal:
+			helpers.Log.Info("received", sig)
+			cmd()
+		default:
+		}
+	}
 }

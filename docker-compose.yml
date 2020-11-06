@@ -13,7 +13,8 @@ services:
         dbname=${POSTGRES_DB:-velobike}
         sslmode=disable
       TZ: "Europe/Moscow"
-      BACKUP_DIR: "/data"
+      BACKUP_DIR: ${BACKUP_DIR:-"/data"}
+      PARSE_INTERVAL: ${PARSE_INTERVAL:-"@every 1m"}
     depends_on:
       - "postgres"
     volumes:

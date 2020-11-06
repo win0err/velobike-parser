@@ -2,39 +2,33 @@ package savers
 
 import (
 	"fmt"
-	"log"
-	"os"
 	"time"
 
 	"github.com/win0err/velobike-parser/database"
+	"github.com/win0err/velobike-parser/helpers"
 	"github.com/win0err/velobike-parser/parkings"
 )
 
-var BackupDir = os.Getenv("BACKUP_DIR")
+func ToDb(states []parkings.State) error {
+	currentTime := states[0].Time.Truncate(time.Second)
 
-func ToDb(states []parkings.State, currentTime time.Time) error {
-	db, err := database.GetConnection()
-	if err != nil {
-		return fmt.Errorf("unable to connect database: %w", err)
-	}
-	defer db.Close()
-
-	dbStateRepository := parkings.ProvideDbStateRepository(db)
+	dbStateRepository := parkings.ProvideDbStateRepository(database.Connection)
 	lastState, _ := dbStateRepository.GetLast()
 
-	if !lastState.Time.Equal(currentTime) {
+	if !lastState.Time.Truncate(time.Second).Equal(currentTime) {
 		if err := dbStateRepository.SaveAll(states); err != nil {
 			return fmt.Errorf("error while saving data: %w", err)
 		}
 	} else {
-		log.Printf("[INFO] Data already exists for %s, skipping...\n", currentTime)
+		helpers.Log.Info("data already exists for %s, skipping...\n", currentTime)
 	}
 
 	return nil
 }
 
-func ToJson(states []parkings.State, currentTime time.Time) error {
-	jsonStateRepository := parkings.ProvideJsonStateRepository(BackupDir)
+func ToJson(states []parkings.State) error {
+	currentTime := states[0].Time
+	jsonStateRepository := parkings.ProvideJsonStateRepository(helpers.Config.BackupDir)
 
 	return jsonStateRepository.SaveAll(states, currentTime)
 }
