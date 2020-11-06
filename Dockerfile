@@ -14,6 +14,7 @@ COPY --from=wait-for-it /usr/bin/wait-for-it /usr/bin/wait-for-it
 ENV DB_DIALECT sqlite3
 ENV DB_URI "/data/velobike.db"
 ENV BACKUP_DIR "/data"
+ENV PARSE_INTERVAL "@every 1m"
 
 RUN go build -o velobike-parser .
 

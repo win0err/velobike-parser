@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/win0err/velobike-parser/helpers"
 )
 
 // VelobikeResponse structure is properly parsed JSON with request time added.
@@ -52,10 +50,14 @@ func NewRequest() Request {
 }
 
 func (r *Request) Get() error {
+	r.ParsedResponse.Time = time.Now().Truncate(time.Second)
+
+	// Velobike has some troubles with certificates
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{Transport: tr}
+
 	res, err := client.Get(VelobikeAPIEndpointURI)
 	if err != nil {
 		return err
@@ -78,6 +80,5 @@ func (r *Request) Parse() error {
 		return fmt.Errorf("parkings data is empty: %+v", string(r.RawResponse))
 	}
 
-	r.ParsedResponse.Time = helpers.GetCurrentTime()
 	return nil
 }
